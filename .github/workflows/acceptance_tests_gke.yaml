@@ -64,10 +64,8 @@ jobs:
           install_components: "beta,gke-gcloud-auth-plugin"
       - name: "Initialize gcloud SDK"
         run: "gcloud init"
-      - name: "Use gcloud CLI"
-        run: "gcloud info"
       - name: "Find GKE auth plugin"
-        run: "which gke-gcloud-auth-plugin"
+        run: "which -a gke-gcloud-auth-plugin"
       # - name: Provision GKE Cluster
       #   working-directory: ./kubernetes/test-infra/gke
       #   env:
