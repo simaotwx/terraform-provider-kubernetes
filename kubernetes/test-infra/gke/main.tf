@@ -17,9 +17,6 @@ variable "enable_alpha" {
 data "google_compute_zones" "available" {
 }
 
-data "google_client_config" "default" {
-}
-
 data "google_container_engine_versions" "supported" {
   location       = data.google_compute_zones.available.names[0]
   version_prefix = var.kubernetes_version
@@ -76,10 +73,10 @@ locals {
     preferences = {
       colors = true
     }
-    current-context = "tf-k8s-gcp-test"
+    current-context = google_container_cluster.primary.name
     contexts = [
       {
-        name = "tf-k8s-gcp-test"
+        name = google_container_cluster.primary.name
         context = {
           cluster   = google_container_cluster.primary.name
           user      = google_service_account.default.email
@@ -100,14 +97,9 @@ locals {
       {
         name = google_service_account.default.email
         user = {
-          auth-provider = {
-            name = "gcp"
-            config = {
-              cmd-args   = "config config-helper --format=json --access-token-file=${path.cwd}/gcptoken"
-              cmd-path   = "gcloud"
-              expiry-key = "{.credential.token_expiry}"
-              token-key  = "{.credential.access_token}"
-            }
+          exec = {
+            api-version = "client.authentication.k8s.io/v1beta1"
+            command     = "gke-gcloud-auth-plugin"
           }
         }
       }
@@ -118,11 +110,6 @@ locals {
 resource "local_file" "kubeconfig" {
   content  = yamlencode(local.kubeconfig)
   filename = "${path.module}/kubeconfig"
-}
-
-resource "local_file" "gcptoken" {
-  content  = data.google_client_config.default.access_token
-  filename = "${path.module}/gcptoken"
 }
 
 output "google_zone" {
