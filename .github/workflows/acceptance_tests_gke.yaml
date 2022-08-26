@@ -67,31 +67,35 @@ jobs:
         run: "gcloud init"
       - name: "Find GKE auth plugin"
         run: "which -a gke-gcloud-auth-plugin"
-      - name: Provision GKE Cluster
-        working-directory: ./kubernetes/test-infra/gke
-        env:
-          TF_VAR_kubernetes_version: ${{ github.event.inputs.kubernetesVersion }}
-          TF_VAR_workers_count: ${{ github.event.inputs.workersCount }}
-          TF_VAR_node_machine_type: ${{ github.event.inputs.nodeMachineType }}
+      - name: "Find kubectl"
         run: |
-          env
-          terraform init
-          terraform apply -auto-approve
-          export CLUSTER_NAME=`terraform output -raw cluster_name`
-          echo "GOOGLE_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
-          gcloud beta container clusters update --enable-service-externalips $CLUSTER_NAME --zone $GOOGLE_ZONE
-      - name: Get GKE Credentials
-        env:
-          KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
-        uses: "google-github-actions/get-gke-credentials@v0"
-        with:
-          cluster_name: ${{ env.GOOGLE_CLUSTER_NAME }}
-          location: ${{github.event.inputs.zone}}
-          project_id: ${{ secrets.GOOGLE_PROJECT }}
-      - name: "Test cluster access"
-        run: |
-          "kubectl --kubeconfig ${{env.KUBECONFIG}} cluster-info"
-          "kubectl --kubeconfig ${{env.KUBECONFIG}} get nodes -owide"
+          gcloud info
+          which -a kubectl
+      # - name: Provision GKE Cluster
+      #   working-directory: ./kubernetes/test-infra/gke
+      #   env:
+      #     TF_VAR_kubernetes_version: ${{ github.event.inputs.kubernetesVersion }}
+      #     TF_VAR_workers_count: ${{ github.event.inputs.workersCount }}
+      #     TF_VAR_node_machine_type: ${{ github.event.inputs.nodeMachineType }}
+      #   run: |
+      #     env
+      #     terraform init
+      #     terraform apply -auto-approve
+      #     export CLUSTER_NAME=`terraform output -raw cluster_name`
+      #     echo "GOOGLE_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
+      #     gcloud beta container clusters update --enable-service-externalips $CLUSTER_NAME --zone $GOOGLE_ZONE
+      # - name: Get GKE Credentials
+      #   env:
+      #     KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
+      #   uses: "google-github-actions/get-gke-credentials@v0"
+      #   with:
+      #     cluster_name: ${{ env.GOOGLE_CLUSTER_NAME }}
+      #     location: ${{github.event.inputs.zone}}
+      #     project_id: ${{ secrets.GOOGLE_PROJECT }}
+      # - name: "Test cluster access"
+      #   run: |
+      #     "kubectl --kubeconfig ${{env.KUBECONFIG}} cluster-info"
+      #     "kubectl --kubeconfig ${{env.KUBECONFIG}} get nodes -owide"
       # - name: Run Acceptance Test Suite
       #   env:
       #     TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
