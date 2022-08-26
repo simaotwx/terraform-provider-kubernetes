@@ -92,15 +92,16 @@ jobs:
         run: |
           kubectl --kubeconfig ${{env.KUBECONFIG}} cluster-info
           kubectl --kubeconfig ${{env.KUBECONFIG}} get nodes -owide
-      # - name: Run Acceptance Test Suite
-      #   env:
-      #     TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
-      #     TESTARGS: -run '${{ github.event.inputs.runTests }}'
-      #     KUBE_CONFIG_PATH: ${{env.KUBECONFIG}}
-      #   run: |
-      #     make testacc
-      # - name: Destroy GKE cluster
-      #   if: always() # we should destroy the cluster even if the tests fail
-      #   working-directory: ./kubernetes/test-infra/gke
-      #   run: |
-      #     terraform destroy --auto-approve
+      - name: Run Acceptance Test Suite
+        env:
+          TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
+          TESTARGS: -run '${{ github.event.inputs.runTests }}'
+          KUBE_CONFIG_PATH: ${{env.KUBECONFIG}}
+        run: |
+          make testacc
+          go test -v -tags acceptance ./manifest/test/acceptance
+      - name: Destroy GKE cluster
+        if: always() # we should destroy the cluster even if the tests fail
+        working-directory: ./kubernetes/test-infra/gke
+        run: |
+          terraform destroy --auto-approve
