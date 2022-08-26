@@ -61,13 +61,13 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v0"
         with:
-          install_components: "beta"
+          install_components: "beta,gke-gcloud-auth-plugin"
       - name: "Initialize gcloud SDK"
         run: "gcloud init"
-      - name: "Install GKE auth plugin"
-        run: |
-          "gcloud components install gke-gcloud-auth-plugin"
-          "which gke-gcloud-auth-plugin"
+      - name: "Use gcloud CLI"
+        run: "gcloud info"
+      - name: "Find GKE auth plugin"
+        run: "which gke-gcloud-auth-plugin"
       # - name: Provision GKE Cluster
       #   working-directory: ./kubernetes/test-infra/gke
       #   env:
