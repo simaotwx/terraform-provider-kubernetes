@@ -203,4 +203,5 @@ jobs:
       - name: Destroy GKE cluster
         working-directory: ./kubernetes/test-infra/gke
         run: |
+          terraform init
           terraform destroy --auto-approve
