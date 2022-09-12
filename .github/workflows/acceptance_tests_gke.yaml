@@ -124,7 +124,7 @@ jobs:
       - name: "Persist test binary"
         uses: actions/upload-artifact@v3
         with:
-          name: gke-cluster
+          name: test-binary
           path: |
             ${{ github.workspace }}/kubernetes.test
 
@@ -162,12 +162,17 @@ jobs:
         run: |
           gcloud init
           gcloud info
-      - name: "Fetch test binary and kubeconfig"
+      - name: "Fetch kubeconfig"
         uses: actions/download-artifact@v3
         with:
           name: gke-cluster
           path: |
-            ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
+            ${{ github.workspace }}/kubernetes/test-infra/gke
+      - name: "Fetch test binary"
+        uses: actions/download-artifact@v3
+        with:
+          name: test-binary
+          path: |
             ${{ github.workspace }}/kubernetes.test
       - name: Run Acceptance Test Suite
         env:
@@ -188,7 +193,7 @@ jobs:
         with:
           name: gke-cluster
           path: |
-            ${{ github.workspace }}/kubernetes/test-infra/gke/terraform.tfstate
+            ${{ github.workspace }}/kubernetes/test-infra/gke
       - name: Authenticate to Google Cloud
         uses: "google-github-actions/auth@v0"
         with:
