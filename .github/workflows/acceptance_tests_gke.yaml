@@ -31,9 +31,11 @@ env:
   GOOGLE_REGION: ${{ github.event.inputs.region }}
   GOOGLE_ZONE: ${{github.event.inputs.zone}}
   USE_GKE_GCLOUD_AUTH_PLUGIN: True
+  KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
 
 jobs:
-  acceptance_tests:
+  prepare-gke-environment:
+    name: "Prepare GKE cluster"
     permissions:
       contents: "read"
       id-token: "write"
@@ -74,15 +76,12 @@ jobs:
           TF_VAR_workers_count: ${{ github.event.inputs.workersCount }}
           TF_VAR_node_machine_type: ${{ github.event.inputs.nodeMachineType }}
         run: |
-          env
           terraform init
           terraform apply -auto-approve
           export CLUSTER_NAME=`terraform output -raw cluster_name`
           echo "GOOGLE_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
           gcloud beta container clusters update --enable-service-externalips $CLUSTER_NAME --zone $GOOGLE_ZONE
       - name: Get GKE Credentials
-        env:
-          KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
         uses: "google-github-actions/get-gke-credentials@v0"
         with:
           cluster_name: ${{ env.GOOGLE_CLUSTER_NAME }}
@@ -90,16 +89,40 @@ jobs:
           project_id: ${{ secrets.GOOGLE_PROJECT }}
       - name: "Test cluster access"
         run: |
-          kubectl --kubeconfig ${{env.KUBECONFIG}} cluster-info
-          kubectl --kubeconfig ${{env.KUBECONFIG}} get nodes -owide
+          kubectl cluster-info
+          kubectl get nodes -owide
+  generate-case-matrix:
+    name: "Generate matrix of test cases"
+    runs-on: ubuntu-latest
+    outputs:
+      test-case-matrix: ${{ steps.generate.outputs.test-case-matrix }}
+    steps:
+      - name: "Generate testcase matrix"
+        id: generate
+        run: |
+          echo "::set-output name=test-case-matrix::$(go run scripts/batchacc.go)"
+  acceptance-tests:
+    name: "Run acceptance tests"
+    needs: [prepare_gke_environment, generate-case-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-case: ${{ fromJson(needs.generate-case-matrix.outputs.test-case-matrix) }}
+    steps:
       - name: Run Acceptance Test Suite
         env:
           TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
           TESTARGS: -run '${{ github.event.inputs.runTests }}'
           KUBE_CONFIG_PATH: ${{env.KUBECONFIG}}
+          TF_ACC: 1
         run: |
-          go test -v -tags acceptance ./manifest/test/acceptance
-          make testacc
+          ./kubernetes.test -test.v -test.run='^${{ matrix.test-case }}$'
+  clean-up:
+    name: "Destroy GKE cluster"
+    if: ${{ always() }}
+    needs: [prepare-gke-environment, acceptance-tests]
+    runs-on: ubuntu-latest
+    steps:
       - name: Destroy GKE cluster
         if: always() # we should destroy the cluster even if the tests fail
         working-directory: ./kubernetes/test-infra/gke
