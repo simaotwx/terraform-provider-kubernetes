@@ -162,7 +162,7 @@ jobs:
         run: |
           gcloud init
           gcloud info
-      - name: "Fetch kubeconfig"
+      - name: "Fetch test binary and kubeconfig"
         uses: actions/download-artifact@v3
         with:
           name: gke-cluster
