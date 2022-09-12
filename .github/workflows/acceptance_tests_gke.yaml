@@ -129,7 +129,7 @@ jobs:
             ${{ github.workspace }}/kubernetes.test
 
   acceptance-tests:
-    name: "Run acceptance tests"
+    name: "Test"
     needs: [prepare-gke-environment, generate-case-matrix]
     runs-on: ubuntu-latest
     strategy:
@@ -174,11 +174,12 @@ jobs:
           name: test-binary
           path: |
             ${{ github.workspace }}
-      - name: Run Acceptance Test Suite
+      - name: Run Acceptance Test
         env:
           TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
           TF_ACC: 1
         run: |
+          chmod a+x ${{ github.workspace }}/kubernetes.test
           ${{ github.workspace }}/kubernetes.test -test.v -test.run='^${{ matrix.test-case }}$'
 
   clean-up:
