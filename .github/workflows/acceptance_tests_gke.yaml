@@ -103,7 +103,7 @@ jobs:
           echo "::set-output name=test-case-matrix::$(go run scripts/batchacc.go)"
   acceptance-tests:
     name: "Run acceptance tests"
-    needs: [prepare_gke_environment, generate-case-matrix]
+    needs: [prepare-gke-environment, generate-case-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
