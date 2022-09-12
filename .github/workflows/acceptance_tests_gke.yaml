@@ -173,7 +173,7 @@ jobs:
         with:
           name: test-binary
           path: |
-            ${{ github.workspace }}/kubernetes.test
+            ${{ github.workspace }}
       - name: Run Acceptance Test Suite
         env:
           TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
