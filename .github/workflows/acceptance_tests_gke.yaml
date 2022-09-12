@@ -11,7 +11,7 @@ on:
         default: us-east1-b
       kubernetesVersion:
         description: The GKE kubernetes version
-        default: 1.23
+        default: 1.24
       workersCount:
         description: The number of cluster nodes to provision
         default: 2
@@ -23,7 +23,7 @@ on:
         default: ".*"
       terraformVersion:
         description: Terraform version
-        default: 1.2.4
+        default: 1.2.8
 
 env:
   GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
@@ -31,7 +31,6 @@ env:
   GOOGLE_REGION: ${{ github.event.inputs.region }}
   GOOGLE_ZONE: ${{github.event.inputs.zone}}
   USE_GKE_GCLOUD_AUTH_PLUGIN: True
-  KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
 
 jobs:
   prepare-gke-environment:
@@ -40,6 +39,8 @@ jobs:
       contents: "read"
       id-token: "write"
     runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
     steps:
       - uses: actions/checkout@v3
       - name: Read go-version
@@ -70,7 +71,7 @@ jobs:
           terraform_version: ${{ github.event.inputs.terraformVersion }}
           terraform_wrapper: false
       - name: Provision GKE Cluster
-        working-directory: ./kubernetes/test-infra/gke
+        working-directory: ${{ github.workspace }}/kubernetes/test-infra/gke
         env:
           TF_VAR_kubernetes_version: ${{ github.event.inputs.kubernetesVersion }}
           TF_VAR_workers_count: ${{ github.event.inputs.workersCount }}
@@ -120,6 +121,12 @@ jobs:
         run: |
           go test -c ./kubernetes
           echo "::set-output name=test-case-matrix::$(go run scripts/batchacc.go)"
+      - name: "Persist test binary"
+        uses: actions/upload-artifact@v3
+        with:
+          name: gke-cluster
+          path: |
+            ${{ github.workspace }}/kubernetes.test
 
   acceptance-tests:
     name: "Run acceptance tests"
@@ -128,6 +135,9 @@ jobs:
     strategy:
       matrix:
         test-case: ${{ fromJson(needs.generate-case-matrix.outputs.test-case-matrix) }}
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
+      KUBE_CONFIG_PATH: ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
     steps:
       - uses: actions/checkout@v3
       - name: Read go-version
@@ -158,16 +168,13 @@ jobs:
           name: gke-cluster
           path: |
             ${{ github.workspace }}/kubernetes/test-infra/gke/kubeconfig
-      - name: Build test binary
-        run: go test -c ./kubernetes
+            ${{ github.workspace }}/kubernetes.test
       - name: Run Acceptance Test Suite
         env:
           TF_ACC_TERRAFORM_VERSION: ${{ github.event.inputs.terraformVersion }}
-          TESTARGS: -run '${{ github.event.inputs.runTests }}'
-          KUBE_CONFIG_PATH: ${{ env.KUBECONFIG }}
           TF_ACC: 1
         run: |
-          ./kubernetes.test -test.v -test.run='^${{ matrix.test-case }}$'
+          ${{ github.workspace }}/kubernetes.test -test.v -test.run='^${{ matrix.test-case }}$'
 
   clean-up:
     name: "Destroy GKE cluster"
@@ -177,7 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: "Retrieve state"
-        uses: actions/upload-artifact@v3
+        uses: actions/download-artifact@v3
         with:
           name: gke-cluster
           path: |
@@ -201,7 +208,7 @@ jobs:
           gcloud init
           gcloud info
       - name: Destroy GKE cluster
-        working-directory: ./kubernetes/test-infra/gke
+        working-directory: ${{ github.workspace }}/kubernetes/test-infra/gke
         run: |
           terraform init
           terraform destroy --auto-approve
