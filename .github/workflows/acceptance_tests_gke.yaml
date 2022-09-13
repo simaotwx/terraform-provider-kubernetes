@@ -180,7 +180,7 @@ jobs:
           TF_ACC: 1
         run: |
           chmod a+x ${{ github.workspace }}/kubernetes.test
-          ${{ github.workspace }}/kubernetes.test -test.v -test.run='^${{ matrix.test-case }}$'
+          ${{ github.workspace }}/kubernetes.test -test.v -test.run='^${{ matrix.test-case }}'
 
   clean-up:
     name: "Destroy GKE cluster"
